@@ -3,4 +3,6 @@ App I made for [The Oding Project](https://www.theodinproject.com/lessons/node-p
 
 ## Things I learned 
 
-AI implementation Remaining
+
+## Remaining Work
+-[]- AI implementation Remaining
