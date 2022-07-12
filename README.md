@@ -8,4 +8,5 @@ App I made for [The Oding Project](https://www.theodinproject.com/lessons/node-p
 
 
 ## Remaining Work
-- AI implementation Remaining
+- AI implementation min-max.
+- Web socket programming for multiple user.
