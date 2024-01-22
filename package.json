@@ -1,0 +1,25 @@
+{
+  "name": "tic-tac-toe",
+  "version": "18.16.0",
+  "description": "setting up tic-tac-toe websocket server for multiple players",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start":"node index.js",
+    "dev":"nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asminkarki012/tic-tac-toe.git"
+  },
+  "author": "asminkarki012",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/asminkarki012/tic-tac-toe/issues"
+  },
+  "homepage": "https://github.com/asminkarki012/tic-tac-toe#readme",
+  "dependencies": {
+    "nodemon": "^3.0.2",
+    "ws": "^8.16.0"
+  }
+}
