@@ -23,6 +23,9 @@ const board = document.getElementById("board");
 
 const PLAYERS = Object.freeze({ PLAYER_X: "PLAYER_X", PLAYER_O: "PLAYER_O" });
 
+let receiverPlayer;
+let currentPlayer;
+
 startGame();
 
 restarttButton.addEventListener("click", startGame);
@@ -36,12 +39,12 @@ socket.onopen = (event) => {
   );
 };
 
-const sendPlayerInfoToServer = ({
+function sendPlayerInfoToServer({
   type,
   playerXMoves,
   playerCircleMoves,
   isCircleTurn,
-}) => {
+}) {
   let sendObj = {};
   if (type === "move") {
     sendObj = {
@@ -61,12 +64,17 @@ const sendPlayerInfoToServer = ({
     };
   }
   socket.send(JSON.stringify(sendObj));
-};
+}
 
-const receivePlayerMoveFromServer = () => {
+const receivePlayerInfoFromServer = () => {
   socket.onmessage = (event) => {
     const replyFromServer = JSON.parse(event.data);
     console.log("replyFromServer", replyFromServer);
+    if (replyFromServer.type === "assignName") {
+      console.log("assignName replyFromServer", replyFromServer);
+      currentPlayer = replyFromServer.name;
+      assignReceiverPlayer();
+    }
     if (replyFromServer.type === "move") {
       cellElements.forEach((cell, index) => {
         const PLAYER_O_MOVES = replyFromServer.data.PLAYER_O;
@@ -85,12 +93,13 @@ const receivePlayerMoveFromServer = () => {
     if (replyFromServer.type === "turn") {
       console.log("turn received from server");
       circleTurn = replyFromServer.data.isCircleTurn;
-      console.log("circle turn", circleTurn);
+      receiverPlayer = replyFromServer.name;
+      setBoardHoverClass();
     }
   };
 };
 
-receivePlayerMoveFromServer();
+receivePlayerInfoFromServer();
 // socket.onmessage = (event) => {
 //   console.log("message form server " + event.data);
 // };
@@ -124,8 +133,11 @@ function handleClick(e) {
   // } else if (isDraw()) {
   //   endGame(true);
   // } else {
-  // swapTurn();
-  setBoardHoverClass();
+
+  swapTurn();
+  sendPlayerInfoToServer({ type: "turn", isCircleTurn: circleTurn });
+  // assignReceiverPlayer();
+  // setBoardHoverClass();
   // }
 }
 
@@ -147,12 +159,22 @@ function isDraw() {
 }
 
 function placeMark(cell, currentClass) {
-  if (currentClass === X_CLASS && currentPlayer === PLAYERS.PLAYER_X) {
-    cell.classList.add(currentClass);
-  }
+  if (!receiverPlayer) {
+    if (currentClass === X_CLASS) {
+      cell.classList.add(currentClass);
+    }
 
-  if (currentClass === CIRCLE_CLASS && currentPlayer === PLAYERS.PLAYER_O) {
-    cell.classList.add(currentClass);
+    if (currentClass === CIRCLE_CLASS) {
+      cell.classList.add(currentClass);
+    }
+  } else {
+    if (currentClass === X_CLASS && receiverPlayer === PLAYERS.PLAYER_O) {
+      cell.classList.add(currentClass);
+    }
+
+    if (currentClass === CIRCLE_CLASS && receiverPlayer === PLAYERS.PLAYER_X) {
+      cell.classList.add(currentClass);
+    }
   }
 
   const playerXMoves = [];
@@ -173,17 +195,25 @@ function placeMark(cell, currentClass) {
 
 function swapTurn() {
   circleTurn = !circleTurn;
-  // sendPlayerInfoToServer({ type: "turn", isCircleTurn: !circleTurn });
 }
 
 function setBoardHoverClass() {
   board.classList.remove(X_CLASS);
   board.classList.remove(CIRCLE_CLASS);
-  console.log("HOVER BOARD", circleTurn);
-  if (currentPlayer === PLAYERS.PLAYER_O) {
-    board.classList.add(CIRCLE_CLASS);
+  // console.log("HOVER BOARD", circleTurn);
+  if (!receiverPlayer) {
+    if (circleTurn) {
+      board.classList.add(CIRCLE_CLASS);
+    } else {
+      board.classList.add(X_CLASS);
+    }
   } else {
-    board.classList.add(X_CLASS);
+    if (circleTurn && receiverPlayer === PLAYERS.PLAYER_X) {
+      console.log("circleTurn and receiverPlayer", circleTurn, receiverPlayer);
+      board.classList.add(CIRCLE_CLASS);
+    } else {
+      board.classList.add(X_CLASS);
+    }
   }
 }
 
@@ -193,4 +223,13 @@ function checkWin(currentClass) {
       return cellElements[index].classList.contains(currentClass);
     });
   });
+}
+
+function assignReceiverPlayer() {
+  // console.log("receiverPlayer", receiverPlayer);
+  if (currentPlayer) {
+    console.log("currentPlayer", currentPlayer);
+    const playerNameElement = document.getElementById("player-name");
+    playerNameElement.innerHTML = currentPlayer;
+  }
 }

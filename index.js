@@ -26,6 +26,17 @@ const startwebSocketServer = (port) => {
           isPlayerX = true;
           console.log("PLAYER_O");
         }
+
+        socket.clients.forEach((client) => {
+          if (client === ws) {
+            client.send(
+              JSON.stringify({
+                name: ws.playerName,
+                type: "assignName",
+              })
+            );
+          }
+        });
         return;
       }
 
