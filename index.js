@@ -11,20 +11,14 @@ const startwebSocketServer = (port) => {
 
   socket.on("connection", (ws) => {
     ws.on("message", (message) => {
-      // console.log("Received " + message);
       message = JSON.parse(message);
-      // console.log("reply from server");
-      // ws.send("Ah!!! General Kenobi From Server");
-      console.log("isPlayerX", isPlayerX);
       if (message.type === "name") {
         if (isPlayerX) {
           ws.playerName = PLAYERS.PLAYER_X;
           isPlayerX = false;
-          console.log("PLAYER_X");
         } else {
           ws.playerName = PLAYERS.PLAYER_O;
           isPlayerX = true;
-          console.log("PLAYER_O");
         }
 
         socket.clients.forEach((client) => {
@@ -60,7 +54,6 @@ const startwebSocketServer = (port) => {
           if (message.type === "turn") {
             console.log("message", message);
             console.log("playerName", ws.playerName);
-            isCircleTurn = message.data.isCircleTurn;
             client.send(
               JSON.stringify({
                 name: ws.playerName,
@@ -68,6 +61,16 @@ const startwebSocketServer = (port) => {
                 data: {
                   isCircleTurn: message.data.isCircleTurn,
                 },
+              })
+            );
+          }
+
+          if (message.type === "endGame") {
+            client.send(
+              JSON.stringify({
+                name: ws.playerName,
+                type: "endGame",
+                data: { isDraw: message.data.isDraw },
               })
             );
           }

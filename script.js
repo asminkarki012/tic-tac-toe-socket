@@ -26,6 +26,8 @@ const PLAYERS = Object.freeze({ PLAYER_X: "PLAYER_X", PLAYER_O: "PLAYER_O" });
 let receiverPlayer;
 let currentPlayer;
 
+const playerTurn = document.querySelector("#player-turn");
+
 startGame();
 
 restarttButton.addEventListener("click", startGame);
@@ -37,6 +39,7 @@ socket.onopen = (event) => {
       type: "name",
     })
   );
+  receivePlayerInfoFromServer();
 };
 
 function sendPlayerInfoToServer({
@@ -44,6 +47,7 @@ function sendPlayerInfoToServer({
   playerXMoves,
   playerCircleMoves,
   isCircleTurn,
+  isDraw,
 }) {
   let sendObj = {};
   if (type === "move") {
@@ -57,31 +61,37 @@ function sendPlayerInfoToServer({
   }
 
   if (type === "turn") {
-    console.log("turn sendObj");
     sendObj = {
       type: "turn",
       data: { isCircleTurn },
     };
   }
+
+  if (type === "endGame") {
+    sendObj = {
+      type: "endGame",
+      data: { isDraw },
+    };
+  }
   socket.send(JSON.stringify(sendObj));
+  receivePlayerInfoFromServer();
 }
 
 const receivePlayerInfoFromServer = () => {
   socket.onmessage = (event) => {
     const replyFromServer = JSON.parse(event.data);
-    console.log("replyFromServer", replyFromServer);
     if (replyFromServer.type === "assignName") {
-      console.log("assignName replyFromServer", replyFromServer);
       currentPlayer = replyFromServer.name;
-      assignReceiverPlayer();
+      assignPlayer();
+      updatePlayerTurn();
+      setBoardHoverClass();
     }
+
     if (replyFromServer.type === "move") {
       cellElements.forEach((cell, index) => {
         const PLAYER_O_MOVES = replyFromServer.data.PLAYER_O;
         const PLAYER_X_MOVES = replyFromServer.data.PLAYER_X;
-        console.log("PLAYER_O_MOVES", PLAYER_O_MOVES);
         if (PLAYER_O_MOVES.includes(index)) {
-          console.log("test reply from server");
           cell.classList.add(CIRCLE_CLASS);
         }
         if (PLAYER_X_MOVES.includes(index)) {
@@ -91,22 +101,20 @@ const receivePlayerInfoFromServer = () => {
     }
 
     if (replyFromServer.type === "turn") {
-      console.log("turn received from server");
       circleTurn = replyFromServer.data.isCircleTurn;
       receiverPlayer = replyFromServer.name;
+      updatePlayerTurn();
       setBoardHoverClass();
+    }
+
+    if (replyFromServer.type === "endGame") {
+      endGame(replyFromServer.data.isDraw);
     }
   };
 };
 
-receivePlayerInfoFromServer();
-// socket.onmessage = (event) => {
-//   console.log("message form server " + event.data);
-// };
-
 function startGame() {
   circleTurn = false;
-  //   sendPlayerInfoToServer({ type: "turn", isCircleTurn: circleTurn });
   cellElements.forEach((cell) => {
     cell.classList.remove(X_CLASS);
     cell.classList.remove(CIRCLE_CLASS);
@@ -114,7 +122,6 @@ function startGame() {
     cell.removeEventListener("click", handleClick);
     cell.addEventListener("click", handleClick, { once: true });
   });
-  setBoardHoverClass();
   winningMessageTextElement.classList.remove("show");
 }
 
@@ -123,22 +130,25 @@ function handleClick(e) {
   //switch turn
   //check for win
   //check for draw
-
   const cell = e.target;
   const currentClass = circleTurn ? CIRCLE_CLASS : X_CLASS;
-  //   console.log("cell index", cellElements.indexOf(cell));
-  placeMark(cell, currentClass);
-  // if (checkWin(currentClass)) {
-  //   endGame(false);
-  // } else if (isDraw()) {
-  //   endGame(true);
-  // } else {
 
-  swapTurn();
-  sendPlayerInfoToServer({ type: "turn", isCircleTurn: circleTurn });
-  // assignReceiverPlayer();
-  // setBoardHoverClass();
-  // }
+  //In circle Turn PLAYER_O can only click and vice versa
+  if (circleTurn && currentPlayer === PLAYERS.PLAYER_X) return;
+  if (!circleTurn && currentPlayer === PLAYERS.PLAYER_O) return;
+
+  placeMark(cell, currentClass);
+  if (checkWin(currentClass)) {
+    endGame(false);
+    sendPlayerInfoToServer({ type: "endGame", isDraw: false });
+  } else if (isDraw()) {
+    endGame(true);
+    sendPlayerInfoToServer({ type: "endGame", isDraw: true }); //
+  } else {
+    swapTurn();
+    playerTurn.innerHTML = "";
+    sendPlayerInfoToServer({ type: "turn", isCircleTurn: circleTurn });
+  }
 }
 
 function endGame(draw) {
@@ -159,22 +169,12 @@ function isDraw() {
 }
 
 function placeMark(cell, currentClass) {
-  if (!receiverPlayer) {
-    if (currentClass === X_CLASS) {
-      cell.classList.add(currentClass);
-    }
+  if (currentClass === X_CLASS && currentPlayer === PLAYERS.PLAYER_X) {
+    cell.classList.add(currentClass);
+  }
 
-    if (currentClass === CIRCLE_CLASS) {
-      cell.classList.add(currentClass);
-    }
-  } else {
-    if (currentClass === X_CLASS && receiverPlayer === PLAYERS.PLAYER_O) {
-      cell.classList.add(currentClass);
-    }
-
-    if (currentClass === CIRCLE_CLASS && receiverPlayer === PLAYERS.PLAYER_X) {
-      cell.classList.add(currentClass);
-    }
+  if (currentClass === CIRCLE_CLASS && currentPlayer === PLAYERS.PLAYER_O) {
+    cell.classList.add(currentClass);
   }
 
   const playerXMoves = [];
@@ -200,20 +200,10 @@ function swapTurn() {
 function setBoardHoverClass() {
   board.classList.remove(X_CLASS);
   board.classList.remove(CIRCLE_CLASS);
-  // console.log("HOVER BOARD", circleTurn);
-  if (!receiverPlayer) {
-    if (circleTurn) {
-      board.classList.add(CIRCLE_CLASS);
-    } else {
-      board.classList.add(X_CLASS);
-    }
-  } else {
-    if (circleTurn && receiverPlayer === PLAYERS.PLAYER_X) {
-      console.log("circleTurn and receiverPlayer", circleTurn, receiverPlayer);
-      board.classList.add(CIRCLE_CLASS);
-    } else {
-      board.classList.add(X_CLASS);
-    }
+  if (currentPlayer === PLAYERS.PLAYER_O) {
+    board.classList.add(CIRCLE_CLASS);
+  } else if (currentPlayer === PLAYERS.PLAYER_X) {
+    board.classList.add(X_CLASS);
   }
 }
 
@@ -225,11 +215,17 @@ function checkWin(currentClass) {
   });
 }
 
-function assignReceiverPlayer() {
-  // console.log("receiverPlayer", receiverPlayer);
+function assignPlayer() {
   if (currentPlayer) {
-    console.log("currentPlayer", currentPlayer);
     const playerNameElement = document.getElementById("player-name");
     playerNameElement.innerHTML = currentPlayer;
+  }
+}
+
+function updatePlayerTurn() {
+  if (circleTurn && currentPlayer === PLAYERS.PLAYER_O) {
+    playerTurn.innerHTML = `Your Turn`;
+  } else if (!circleTurn && currentPlayer === PLAYERS.PLAYER_X) {
+    playerTurn.innerHTML = `Your Turn`;
   }
 }

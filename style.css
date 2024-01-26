@@ -21,6 +21,14 @@ body {
   align-items: center;
 }
 
+#player-turn {
+  font-family: "Times New Roman", Times, serif;
+  font-weight: 200;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+}
+
 /* board is displayed over entire screen */
 .board {
   width: 100vw;
