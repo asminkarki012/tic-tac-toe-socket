@@ -34,6 +34,7 @@ restarttButton.addEventListener("click", startGame);
 
 const socket = new WebSocket("ws://localhost:5501");
 socket.onopen = (event) => {
+  // console.log("client side event",event);
   socket.send(
     JSON.stringify({
       type: "name",
@@ -217,12 +218,12 @@ function checkWin(currentClass) {
 }
 
 function assignPlayer() {
+  console.log(currentPlayer)
   if (currentPlayer) {
     const playerNameElement = document.getElementById("player-name");
     playerNameElement.innerHTML = currentPlayer;
   }
 }
-
 function updatePlayerTurn() {
   if (circleTurn && currentPlayer === PLAYERS.PLAYER_O) {
     playerTurn.innerHTML = `Your Turn`;

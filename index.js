@@ -12,19 +12,20 @@ const startwebSocketServer = (port) => {
   const players = {};
   let connectionCount = 1;
   socket.on("connection", (ws) => {
+    const clientSize = socket.clients.size;
     ws.on("message", (message) => {
       message = JSON.parse(message);
       if (message.type === "name") {
-        players[`${connectionCount} connection`] = [];
+        //DEFINING SOCKET CONNECTION
         if (isPlayerX) {
           ws.playerName = PLAYERS.PLAYER_X;
           isPlayerX = false;
-          players[`${connectionCount} connection`].push(ws);
+          players[`${clientSize} connection`] = [];
+          players[`${clientSize} connection`].push(ws);
         } else {
           ws.playerName = PLAYERS.PLAYER_O;
           isPlayerX = true;
-          players[`${connectionCount} connection`].push(ws);
-          connectionCount++;
+          players[`${clientSize - 1} connection`].push(ws);
         }
 
         socket.clients.forEach((client) => {
@@ -35,7 +36,7 @@ const startwebSocketServer = (port) => {
                 type: "assignName",
                 data: {
                   numberOfConnectedPlayers:
-                    players[`${connectionCount}`]?.length,
+                    players[`${connectionCount} connection`]?.length,
                 },
               })
             );
@@ -47,11 +48,13 @@ const startwebSocketServer = (port) => {
 
       socket.clients.forEach((client) => {
         const findClientToSendData = Object.keys(players).find((key) => {
+          console.log("key", players[key]);
           if (players[key].includes(client)) {
-            console.log("key", key);
-            return players[key].filter((x) => x !== client)[0];
+            const index = players[key].findIndex((player) => player !== client);
+            if (index !== -1) return players[key][index];
           }
         });
+        console.log("findClientToSendData", findClientToSendData);
         if (findClientToSendData) {
           if (message.type === "move") {
             console.log("message", message);
@@ -96,12 +99,13 @@ const startwebSocketServer = (port) => {
     });
 
     ws.on("close", () => {
-      const closedConnection = Object.keys(players).find((key) => {
-        if (players[key].includes(ws)) {
-          return players[key].filter((x) => x === ws)[0];
-        }
+      //When Client is closed then also remove player from playersObj
+      Object.keys(players).forEach((key) => {
+        const index = players[key].indexOf(ws);
+        if (index !== -1) players[key].splice(index, 1);
       });
-      players[closedConnection].filter((player) => player !== ws);
+
+      isPlayerX = ws.playerName === PLAYERS.PLAYER_X ? true : false;
       console.log(
         `a websocket connection is closed for player ${ws.playerName}`
       );
@@ -110,7 +114,12 @@ const startwebSocketServer = (port) => {
     ws.on("error", (error) => {
       console.log("WebSocket error ", error.message);
     });
-    console.log("one more client connected");
+
+    console.log(
+      `${clientSize} ${
+        clientSize === 1 ? "client is" : "clients are"
+      } connected`
+    );
   });
 };
 
