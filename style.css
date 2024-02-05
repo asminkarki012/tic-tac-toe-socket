@@ -23,10 +23,28 @@ body {
 
 #player-turn {
   font-family: "Times New Roman", Times, serif;
-  font-weight: 200;
+  font-weight: 500;
+}
+
+#player-status {
+  font-family: "Arial", sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  margin: 10px; /* Adjust the margin as needed */
+}
+
+.connected-status {
+  background-color: #6cc070;
+}
+
+.disconnected-status {
+  background-color: #f76c6c;
+}
+
+.flex-center {
   display: flex;
   justify-content: center;
-  align-items: baseline;
+  align-items: center;
 }
 
 /* board is displayed over entire screen */

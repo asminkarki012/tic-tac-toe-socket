@@ -80,6 +80,7 @@ function sendPlayerInfoToServer({
 const receivePlayerInfoFromServer = () => {
   socket.onmessage = (event) => {
     const replyFromServer = JSON.parse(event.data);
+    console.log("reply from server", replyFromServer);
     if (replyFromServer.type === "assignName") {
       currentPlayer = replyFromServer.name;
       assignPlayer();
