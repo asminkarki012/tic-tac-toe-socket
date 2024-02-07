@@ -13,55 +13,99 @@ const startwebSocketServer = (port) => {
     const players = {};
     let connectionCount = 1;
     socket.on("connection", (ws) => {
-      const clientSize = socket.clients.size;
+      let clientSize = socket.clients.size;
+      console.log("initial clientSize", clientSize);
+      if (!ws) return;
       ws.on("message", (message) => {
+        // console.log("message: " + message);
+        console.log("client socket size when messaging", socket.clients.size);
         message = JSON.parse(message);
         if (message.type === "name") {
           //DEFINING SOCKET CONNECTION
-          if (isPlayerX) {
+
+          console.log("isPlayerrx initally", isPlayerX);
+          console.log("clientSize before name", clientSize);
+          if (isPlayerX || clientSize % 2 !== 0) {
             ws.playerName = PLAYERS.PLAYER_X;
-            isPlayerX = false;
+            ws.connectionNumber = `${clientSize} connection`;
             players[`${clientSize} connection`] = [];
             players[`${clientSize} connection`].push(ws);
+            isPlayerX = false;
           } else {
             ws.playerName = PLAYERS.PLAYER_O;
+            ws.connectionNumber = `${clientSize - 1} connection`;
+            if (players[`${clientSize - 1} connection`])
+              players[`${clientSize - 1} connection`].push(ws);
             isPlayerX = true;
-            players[`${clientSize - 1} connection`].push(ws);
           }
 
           socket.clients.forEach((client) => {
             if (client === ws) {
+              console.log("when assigningName ws", ws.playerName);
               client.send(
                 JSON.stringify({
                   name: ws.playerName,
                   type: "assignName",
                   data: {
-                    numberOfConnectedPlayers:
-                      players[`${connectionCount} connection`]?.length,
+                    isPair:
+                      players[`${connectionCount} connection`]?.length % 2 ===
+                      0,
                   },
                 })
               );
             }
           });
-          // console.log("players", players);
+          console.log("players", Object.keys(players));
           return;
         }
 
         socket.clients.forEach((client) => {
-          const findClientToSendData = Object.keys(players).find((key) => {
-            console.log("key", players[key]);
-            if (players[key].includes(client)) {
-              const index = players[key].findIndex(
-                (player) => player !== client
-              );
-              if (index !== -1) return players[key][index];
+          let findClientToSendData;
+          //PLAYERS CAN PLAY ONLY IN PAIR 2,4,6....
+          console.log("after connection is established");
+          const { connectionNumber } = client;
+
+          if (connectionNumber) {
+            if (players?.[connectionNumber]?.length % 2 !== 0) return;
+
+            // if ((message.type = "isPair")) {
+            //   if (client === ws) {
+            //     client.send(
+            //       JSON.stringify({
+            //         name: ws.playerName,
+            //         type: "isPair",
+            //         data: {
+            //           isPair: players[connectionNumber]?.length % 2 === 0,
+            //         },
+            //       })
+            //     );
+            //   }
+            // }
+
+            console.log("connectionNumber", connectionNumber);
+            const index = players[connectionNumber]?.findIndex(
+              (player) => player !== client
+            );
+            console.log("index for client", index);
+            if (index !== -1) {
+              findClientToSendData = players[connectionNumber][index];
             }
-          });
-          console.log("findClientToSendData", findClientToSendData);
+          }
+          // Object.keys(players).find((key) => {
+          //   if (players[key].includes(client)) {
+          //     console.log("key", key);
+          //     console.log("key", client.playerName);
+          //     const index = players[key].findIndex(
+          //       (player) => player !== client
+          //     );
+          //     console.log("Key", key);
+          //     console.log("index for client", index);
+          //     if (index !== -1) findClientToSendData = players[key][index];
+          //   }
+          // });
+          console.log("findClientToSendData", findClientToSendData.playerName);
           if (findClientToSendData) {
             if (message.type === "move") {
-              console.log("message", message);
-              console.log("playerName", ws.playerName);
               client.send(
                 JSON.stringify({
                   name: ws.playerName,
@@ -102,13 +146,21 @@ const startwebSocketServer = (port) => {
       });
 
       ws.on("close", () => {
+        // clientSize = socket.clients.size;
         //When Client is closed then also remove player from playersObj
         Object.keys(players).forEach((key) => {
-          const index = players[key].indexOf(ws);
+          const index = players[key].findIndex((player) => ws === player);
           if (index !== -1) players[key].splice(index, 1);
         });
 
-        isPlayerX = ws.playerName === PLAYERS.PLAYER_X ? true : false;
+        Object.keys(players).forEach((key) => {
+          console.log("keys and length", key, players[key].length);
+          if (players[key].length === 0) delete players[key];
+        });
+
+        console.log("clienSizee on close", clientSize);
+        isPlayerX = ws.playerName === PLAYERS.PLAYER_X;
+        console.log("isPlayerX", isPlayerX);
         console.log(
           `a websocket connection is closed for player ${ws.playerName}`
         );

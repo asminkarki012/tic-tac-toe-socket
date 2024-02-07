@@ -28,6 +28,9 @@ let currentPlayer;
 
 const playerTurn = document.querySelector("#player-turn");
 
+//Only Pair can play the game
+let isPair;
+
 startGame();
 
 restarttButton.addEventListener("click", startGame);
@@ -51,6 +54,12 @@ function sendPlayerInfoToServer({
   isDraw,
 }) {
   let sendObj = {};
+  if (type === "isPair") {
+    sendObj = {
+      type: "isPair",
+    };
+  }
+
   if (type === "move") {
     sendObj = {
       type: "move",
@@ -89,6 +98,11 @@ const receivePlayerInfoFromServer = () => {
       setBoardHoverClass();
     }
 
+    if (replyFromServer.type === "isPair") {
+      console.log("client side recieved is Pair", replyFromServer.data);
+      isPair = replyFromServer.data.isPair;
+    }
+
     if (replyFromServer.type === "move") {
       cellElements.forEach((cell, index) => {
         const PLAYER_O_MOVES = replyFromServer.data.PLAYER_O;
@@ -117,6 +131,7 @@ const receivePlayerInfoFromServer = () => {
 
 function startGame() {
   circleTurn = false;
+  isPair = false;
   cellElements.forEach((cell) => {
     cell.classList.remove(X_CLASS);
     cell.classList.remove(CIRCLE_CLASS);
@@ -134,7 +149,8 @@ function handleClick(e) {
   //check for draw
   const cell = e.target;
   const currentClass = circleTurn ? CIRCLE_CLASS : X_CLASS;
-
+  //Only pair can play tic tac toe;
+  // if (!isPair) return;
   //In circle Turn PLAYER_O can only click and vice versa
   if (circleTurn && currentPlayer === PLAYERS.PLAYER_X) return;
   if (!circleTurn && currentPlayer === PLAYERS.PLAYER_O) return;
@@ -218,16 +234,25 @@ function checkWin(currentClass) {
 }
 
 function assignPlayer() {
-  console.log(currentPlayer)
+  console.log(currentPlayer);
   if (currentPlayer) {
     const playerNameElement = document.getElementById("player-name");
     playerNameElement.innerHTML = currentPlayer;
   }
 }
+
 function updatePlayerTurn() {
-  if (circleTurn && currentPlayer === PLAYERS.PLAYER_O) {
+  if (circleTurn && currentPlayer === PLAYERS.PLAYER_O ) {
     playerTurn.innerHTML = `Your Turn`;
   } else if (!circleTurn && currentPlayer === PLAYERS.PLAYER_X) {
     playerTurn.innerHTML = `Your Turn`;
   }
+  //  else if (!isPair) {
+  //   playerTurn.innerHTML = "Please wait for the other player to join!";
+  // }
+}
+
+function checkPair() {
+  console.log("RUNNING CHECK PAIR");
+  sendPlayerInfoToServer({ type: "isPair" });
 }
