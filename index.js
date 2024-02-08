@@ -46,11 +46,6 @@ const startwebSocketServer = (port) => {
                 JSON.stringify({
                   name: ws.playerName,
                   type: "assignName",
-                  data: {
-                    isPair:
-                      players[`${connectionCount} connection`]?.length % 2 ===
-                      0,
-                  },
                 })
               );
             }
@@ -67,20 +62,6 @@ const startwebSocketServer = (port) => {
 
           if (connectionNumber) {
             if (players?.[connectionNumber]?.length % 2 !== 0) return;
-
-            // if ((message.type = "isPair")) {
-            //   if (client === ws) {
-            //     client.send(
-            //       JSON.stringify({
-            //         name: ws.playerName,
-            //         type: "isPair",
-            //         data: {
-            //           isPair: players[connectionNumber]?.length % 2 === 0,
-            //         },
-            //       })
-            //     );
-            //   }
-            // }
 
             console.log("connectionNumber", connectionNumber);
             const index = players[connectionNumber]?.findIndex(
@@ -105,10 +86,22 @@ const startwebSocketServer = (port) => {
           // });
           console.log("findClientToSendData", findClientToSendData.playerName);
           if (findClientToSendData) {
+            if (message.type === "isPair") {
+              client.send(
+                JSON.stringify({
+                  name: findClientToSendData.playerName,
+                  type: "isPair",
+                  data: {
+                    isPair: players[connectionNumber]?.length % 2 === 0,
+                  },
+                })
+              );
+            }
+
             if (message.type === "move") {
               client.send(
                 JSON.stringify({
-                  name: ws.playerName,
+                  name: findClientToSendData.playerName,
                   type: "move",
                   data: {
                     PLAYER_O: message.data.PLAYER_O,
@@ -123,7 +116,7 @@ const startwebSocketServer = (port) => {
               console.log("playerName", ws.playerName);
               client.send(
                 JSON.stringify({
-                  name: ws.playerName,
+                  name: findClientToSendData.playerName,
                   type: "turn",
                   data: {
                     isCircleTurn: message.data.isCircleTurn,
@@ -135,7 +128,7 @@ const startwebSocketServer = (port) => {
             if (message.type === "endGame") {
               client.send(
                 JSON.stringify({
-                  name: ws.playerName,
+                  name: findClientToSendData.playerName,
                   type: "endGame",
                   data: { isDraw: message.data.isDraw },
                 })

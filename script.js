@@ -87,6 +87,7 @@ function sendPlayerInfoToServer({
   receivePlayerInfoFromServer();
 }
 
+console.log("isPair", isPair);
 const receivePlayerInfoFromServer = () => {
   socket.onmessage = (event) => {
     const replyFromServer = JSON.parse(event.data);
@@ -96,11 +97,13 @@ const receivePlayerInfoFromServer = () => {
       assignPlayer();
       updatePlayerTurn();
       setBoardHoverClass();
+      checkPair();
     }
 
     if (replyFromServer.type === "isPair") {
-      console.log("client side recieved is Pair", replyFromServer.data);
       isPair = replyFromServer.data.isPair;
+      console.log("isPair in client", isPair);
+      updatePlayerTurn();
     }
 
     if (replyFromServer.type === "move") {
@@ -131,7 +134,12 @@ const receivePlayerInfoFromServer = () => {
 
 function startGame() {
   circleTurn = false;
-  isPair = false;
+  if(currentPlayer){
+    sendPlayerInfoToServer({ type: "turn", isCircleTurn: circleTurn });
+  }
+  //if it is already set to true then dont change to false
+  if (!isPair) isPair = false;
+
   cellElements.forEach((cell) => {
     cell.classList.remove(X_CLASS);
     cell.classList.remove(CIRCLE_CLASS);
@@ -150,7 +158,7 @@ function handleClick(e) {
   const cell = e.target;
   const currentClass = circleTurn ? CIRCLE_CLASS : X_CLASS;
   //Only pair can play tic tac toe;
-  // if (!isPair) return;
+  if (!isPair) return;
   //In circle Turn PLAYER_O can only click and vice versa
   if (circleTurn && currentPlayer === PLAYERS.PLAYER_X) return;
   if (!circleTurn && currentPlayer === PLAYERS.PLAYER_O) return;
@@ -159,9 +167,11 @@ function handleClick(e) {
   if (checkWin(currentClass)) {
     endGame(false);
     sendPlayerInfoToServer({ type: "endGame", isDraw: false });
+    updatePlayerTurn();
   } else if (isDraw()) {
     endGame(true);
     sendPlayerInfoToServer({ type: "endGame", isDraw: true }); //
+    updatePlayerTurn();
   } else {
     swapTurn();
     playerTurn.innerHTML = "";
@@ -242,14 +252,15 @@ function assignPlayer() {
 }
 
 function updatePlayerTurn() {
-  if (circleTurn && currentPlayer === PLAYERS.PLAYER_O ) {
+  if (circleTurn && currentPlayer === PLAYERS.PLAYER_O && isPair) {
     playerTurn.innerHTML = `Your Turn`;
-  } else if (!circleTurn && currentPlayer === PLAYERS.PLAYER_X) {
+  } else if (!circleTurn && currentPlayer === PLAYERS.PLAYER_X && isPair) {
     playerTurn.innerHTML = `Your Turn`;
+  } else if (!isPair) {
+    playerTurn.innerHTML = "Please wait for the other player to join!";
+  } else {
+    playerTurn.innerHTML = "";
   }
-  //  else if (!isPair) {
-  //   playerTurn.innerHTML = "Please wait for the other player to join!";
-  // }
 }
 
 function checkPair() {
