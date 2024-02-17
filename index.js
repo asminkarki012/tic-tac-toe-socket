@@ -9,9 +9,9 @@ const startwebSocketServer = (port) => {
     });
 
     let isPlayerX = true;
-
     const players = {};
-    let connectionCount = 1;
+    let closedConnectionName;
+
     socket.on("connection", (ws) => {
       let clientSize = socket.clients.size;
       console.log("initial clientSize", clientSize);
@@ -31,11 +31,32 @@ const startwebSocketServer = (port) => {
             players[`${clientSize} connection`] = [];
             players[`${clientSize} connection`].push(ws);
             isPlayerX = false;
-          } else {
+          } else if (
+            isPlayerX &&
+            clientSize % 2 === 0 &&
+            closedConnectionName
+          ) {
+            //When existing playerX is reconnects
+            ws.playerName = PLAYERS.PLAYER_X;
+            ws.connectionNumber = closedConnectionName;
+            players[closedConnectionName].push(ws);
+            isPlayerX = false;
+          } else if (!isPlayerX && clientSize % 2 == 0) {
+            //When new PlayerO is connected
             ws.playerName = PLAYERS.PLAYER_O;
             ws.connectionNumber = `${clientSize - 1} connection`;
             if (players[`${clientSize - 1} connection`])
               players[`${clientSize - 1} connection`].push(ws);
+            isPlayerX = true;
+          } else if (
+            !isPlayerX &&
+            clientSize % 2 !== 0 &&
+            closedConnectionName
+          ) {
+            //When exisiting PlayerO reconnects
+            ws.playerName = PLAYERS.PLAYER_O;
+            ws.connectionNumber = closedConnectionName;
+            players[closedConnectionName].push(ws);
             isPlayerX = true;
           }
 
@@ -84,7 +105,7 @@ const startwebSocketServer = (port) => {
           //     if (index !== -1) findClientToSendData = players[key][index];
           //   }
           // });
-          console.log("findClientToSendData", findClientToSendData.playerName);
+          console.log("findClientToSendData", findClientToSendData?.playerName);
           if (findClientToSendData) {
             if (message.type === "isPair") {
               client.send(
@@ -139,20 +160,43 @@ const startwebSocketServer = (port) => {
       });
 
       ws.on("close", () => {
-        // clientSize = socket.clients.size;
+        clientSize = socket.clients.size;
         //When Client is closed then also remove player from playersObj
         Object.keys(players).forEach((key) => {
           const index = players[key].findIndex((player) => ws === player);
-          if (index !== -1) players[key].splice(index, 1);
+          if (index !== -1) {
+            closedConnectionName = key;
+            players[key].splice(index, 1);
+            socket.clients.forEach((client) => {
+              if (client !== ws) {
+                client.send(
+                  JSON.stringify({
+                    type: "disconnect",
+                    data: { isPair: clientSize % 2 === 0 },
+                  })
+                );
+              }
+            });
+          }
+
+          if (players[key].length === 0) {
+            delete players[key];
+            closedConnectionName = null;
+          }
         });
 
-        Object.keys(players).forEach((key) => {
-          console.log("keys and length", key, players[key].length);
-          if (players[key].length === 0) delete players[key];
-        });
+        // Object.keys(players).forEach((key) => {
+        //   console.log("keys and length", key, players[key].length);
+        //   if (players[key].length === 0) delete players[key];
+        // });
 
         console.log("clienSizee on close", clientSize);
         isPlayerX = ws.playerName === PLAYERS.PLAYER_X;
+
+        //when no players exists then new player is assign as PlayerX
+        if (Object.keys(players).length <= 0) {
+          isPlayerX = true;
+        }
         console.log("isPlayerX", isPlayerX);
         console.log(
           `a websocket connection is closed for player ${ws.playerName}`

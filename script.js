@@ -129,12 +129,18 @@ const receivePlayerInfoFromServer = () => {
     if (replyFromServer.type === "endGame") {
       endGame(replyFromServer.data.isDraw);
     }
+
+    if (replyFromServer.type === "disconnect") {
+      startGame();
+      isPair = replyFromServer.data.isPair;
+      updatePlayerTurn();
+    }
   };
 };
 
 function startGame() {
   circleTurn = false;
-  if(currentPlayer){
+  if (currentPlayer) {
     sendPlayerInfoToServer({ type: "turn", isCircleTurn: circleTurn });
   }
   //if it is already set to true then dont change to false
