@@ -2,29 +2,25 @@ const WebSocket = require("ws").Server;
 const PLAYERS = Object.freeze({ PLAYER_X: "PLAYER_X", PLAYER_O: "PLAYER_O" });
 
 const startwebSocketServer = (port) => {
-  try {
-    const socket = new WebSocket({ port: port });
-    socket.on("listening", (ws) => {
-      console.log("WebSocket server is Listening on port", port);
-    });
+  const socket = new WebSocket({ port: port });
+  socket.on("listening", (ws) => {
+    console.log("WebSocket server is Listening on port", port);
+  });
 
-    let isPlayerX = true;
-    const players = {};
-    let closedConnectionName;
+  let isPlayerX = true;
+  const players = {};
+  let closedConnectionName;
 
-    socket.on("connection", (ws) => {
+  socket.on("connection", (ws) => {
+    try {
       let clientSize = socket.clients.size;
       console.log("initial clientSize", clientSize);
       if (!ws) return;
       ws.on("message", (message) => {
-        // console.log("message: " + message);
-        console.log("client socket size when messaging", socket.clients.size);
         message = JSON.parse(message);
         if (message.type === "name") {
           //DEFINING SOCKET CONNECTION
 
-          console.log("isPlayerrx initally", isPlayerX);
-          console.log("clientSize before name", clientSize);
           if (isPlayerX && clientSize % 2 !== 0) {
             ws.playerName = PLAYERS.PLAYER_X;
             ws.connectionNumber = `${clientSize} connection`;
@@ -62,7 +58,6 @@ const startwebSocketServer = (port) => {
 
           socket.clients.forEach((client) => {
             if (client === ws) {
-              console.log("when assigningName ws", ws.playerName);
               client.send(
                 JSON.stringify({
                   name: ws.playerName,
@@ -78,17 +73,15 @@ const startwebSocketServer = (port) => {
         socket.clients.forEach((client) => {
           let findClientToSendData;
           //PLAYERS CAN PLAY ONLY IN PAIR 2,4,6....
-          console.log("after connection is established");
           const { connectionNumber } = client;
 
           if (connectionNumber) {
             if (players?.[connectionNumber]?.length % 2 !== 0) return;
 
-            console.log("connectionNumber", connectionNumber);
             const index = players[connectionNumber]?.findIndex(
               (player) => player !== client
             );
-            console.log("index for client", index);
+
             if (index !== -1) {
               findClientToSendData = players[connectionNumber][index];
             }
@@ -99,13 +92,11 @@ const startwebSocketServer = (port) => {
           //     console.log("key", client.playerName);
           //     const index = players[key].findIndex(
           //       (player) => player !== client
-          //     );
-          //     console.log("Key", key);
+          //     ); //     console.log("Key", key);
           //     console.log("index for client", index);
           //     if (index !== -1) findClientToSendData = players[key][index];
           //   }
           // });
-          console.log("findClientToSendData", findClientToSendData?.playerName);
           if (findClientToSendData) {
             if (message.type === "isPair") {
               client.send(
@@ -133,8 +124,6 @@ const startwebSocketServer = (port) => {
             }
 
             if (message.type === "turn") {
-              console.log("message", message);
-              console.log("playerName", ws.playerName);
               client.send(
                 JSON.stringify({
                   name: findClientToSendData.playerName,
@@ -168,7 +157,8 @@ const startwebSocketServer = (port) => {
             closedConnectionName = key;
             players[key].splice(index, 1);
             socket.clients.forEach((client) => {
-              if (client !== ws) {
+              //This is the case to handle when user reconnects or disconnects refresh the state of the game
+              if (client?.connectionNumber === closedConnectionName) {
                 client.send(
                   JSON.stringify({
                     type: "disconnect",
@@ -190,14 +180,12 @@ const startwebSocketServer = (port) => {
         //   if (players[key].length === 0) delete players[key];
         // });
 
-        console.log("clienSizee on close", clientSize);
         isPlayerX = ws.playerName === PLAYERS.PLAYER_X;
 
         //when no players exists then new player is assign as PlayerX
         if (Object.keys(players).length <= 0) {
           isPlayerX = true;
         }
-        console.log("isPlayerX", isPlayerX);
         console.log(
           `a websocket connection is closed for player ${ws.playerName}`
         );
@@ -212,10 +200,10 @@ const startwebSocketServer = (port) => {
           clientSize === 1 ? "client is" : "clients are"
         } connected`
       );
-    });
-  } catch (error) {
-    console.error("error in socket server", error.message);
-  }
+    } catch (error) {
+      console.log("Error on websocket when connecting", error);
+    }
+  });
 };
 
 const PORTNO = 5501;
