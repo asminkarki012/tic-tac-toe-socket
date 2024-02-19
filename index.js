@@ -25,7 +25,7 @@ const startwebSocketServer = (port) => {
 
           console.log("isPlayerrx initally", isPlayerX);
           console.log("clientSize before name", clientSize);
-          if (isPlayerX || clientSize % 2 !== 0) {
+          if (isPlayerX && clientSize % 2 !== 0) {
             ws.playerName = PLAYERS.PLAYER_X;
             ws.connectionNumber = `${clientSize} connection`;
             players[`${clientSize} connection`] = [];

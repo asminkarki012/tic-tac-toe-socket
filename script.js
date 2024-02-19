@@ -35,7 +35,7 @@ startGame();
 
 restarttButton.addEventListener("click", startGame);
 
-const socket = new WebSocket("ws://localhost:5501");
+const socket = new WebSocket("ws://192.168.1.79:5501");
 socket.onopen = (event) => {
   // console.log("client side event",event);
   socket.send(
