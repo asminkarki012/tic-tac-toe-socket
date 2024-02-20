@@ -54,6 +54,13 @@ const startwebSocketServer = (port) => {
             ws.connectionNumber = closedConnectionName;
             players[closedConnectionName].push(ws);
             isPlayerX = true;
+          } else if (!isPlayerX && clientSize % 2 !== 0) {
+            //When exisiting PlayerO disconnects and clientsize is odd then assign new connection for it
+            ws.playerName = PLAYERS.PLAYER_X;
+            ws.connectionNumber = `${clientSize} connection`;
+            players[`${clientSize} connection`] = [];
+            players[`${clientSize} connection`].push(ws);
+            isPlayerX = false;
           }
 
           socket.clients.forEach((client) => {
@@ -72,31 +79,22 @@ const startwebSocketServer = (port) => {
 
         socket.clients.forEach((client) => {
           let findClientToSendData;
+          const { connectionNumber } = ws;
+
+          if (!connectionNumber) return;
+
           //PLAYERS CAN PLAY ONLY IN PAIR 2,4,6....
-          const { connectionNumber } = client;
+          if (players?.[connectionNumber]?.length % 2 !== 0) return;
 
-          if (connectionNumber) {
-            if (players?.[connectionNumber]?.length % 2 !== 0) return;
-
-            const index = players[connectionNumber]?.findIndex(
-              (player) => player !== client
-            );
+          if (connectionNumber === client.connectionNumber) {
+            const index = players[connectionNumber]?.indexOf(ws);
 
             if (index !== -1) {
-              findClientToSendData = players[connectionNumber][index];
+              findClientToSendData = players[connectionNumber][1 - index];
             }
           }
-          // Object.keys(players).find((key) => {
-          //   if (players[key].includes(client)) {
-          //     console.log("key", key);
-          //     console.log("key", client.playerName);
-          //     const index = players[key].findIndex(
-          //       (player) => player !== client
-          //     ); //     console.log("Key", key);
-          //     console.log("index for client", index);
-          //     if (index !== -1) findClientToSendData = players[key][index];
-          //   }
-          // });
+
+          //sending data to eachother not to themselves
           if (findClientToSendData) {
             if (message.type === "isPair") {
               client.send(
@@ -111,6 +109,7 @@ const startwebSocketServer = (port) => {
             }
 
             if (message.type === "move") {
+              console.log("move", findClientToSendData.playerName);
               client.send(
                 JSON.stringify({
                   name: findClientToSendData.playerName,
@@ -174,11 +173,6 @@ const startwebSocketServer = (port) => {
             closedConnectionName = null;
           }
         });
-
-        // Object.keys(players).forEach((key) => {
-        //   console.log("keys and length", key, players[key].length);
-        //   if (players[key].length === 0) delete players[key];
-        // });
 
         isPlayerX = ws.playerName === PLAYERS.PLAYER_X;
 
