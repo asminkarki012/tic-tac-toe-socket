@@ -1,275 +1,397 @@
-const cellElements = document.querySelectorAll("[data-cell]");
-let circleTurn;
-const WINNING_COMBINATIONS = [
-  [0, 1, 2],
-  [3, 4, 5],
-  [6, 7, 8],
-  [0, 3, 6],
-  [1, 4, 7],
-  [2, 5, 8],
-  [0, 4, 8],
-  [2, 4, 6],
-];
+class TicTacToe {
+  constructor() {
+    this.cellElements = document.querySelectorAll("[data-cell]");
+    this.circleTurn = false;
+    this.isPair = false;
+    this.currentPlayer = null;
+    this.receiverPlayer = null;
 
-const winningMessageText = document.querySelector(
-  "[data-winning-message-text]"
-);
+    this.aiSocket = null;
 
-const winningMessageTextElement = document.getElementById("winning-message");
-const restarttButton = document.getElementById("restartButton");
-const X_CLASS = "x";
-const CIRCLE_CLASS = "circle";
-const board = document.getElementById("board");
+    this.WINNING_COMBINATIONS = Object.freeze([
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
+    ]);
 
-const PLAYERS = Object.freeze({ PLAYER_X: "PLAYER_X", PLAYER_O: "PLAYER_O" });
+    this.X_CLASS = "x";
+    this.CIRCLE_CLASS = "circle";
+    this.PLAYERS = Object.freeze({
+      PLAYER_X: "PLAYER_X",
+      PLAYER_O: "PLAYER_O",
+    });
 
-let receiverPlayer;
-let currentPlayer;
+    this.board = document.getElementById("board");
+    this.playerTurn = document.querySelector("#player-turn");
+    this.winningMessageText = document.querySelector(
+      "[data-winning-message-text]"
+    );
+    this.winningMessageTextElement = document.getElementById("winning-message");
+    this.restartButton = document.getElementById("restartButton");
+    this.playerModeOptions = document.getElementById("playmode-options");
+    this.playerModeOptions.classList.add("show");
 
-const playerTurn = document.querySelector("#player-turn");
+    //socket setup for multiplayer
+    document
+      .querySelector("#multiplayer-button")
+      .addEventListener("click", () => {
+        this.aiMode = false;
+        this.socket = new WebSocket("ws://localhost:5501");
+        this.setupSocketEvents();
+        this.startGame();
+      });
 
-//Only Pair can play the game
-let isPair;
+    //socket setup for single player neural net
+    document.querySelector("#ai-mode-button").addEventListener("click", () => {
+      this.aiMode = true;
+      this.AI_SOCKET_URL = "ws://localhost:8765";
+      this.setupAISocket();
+      this.startGame();
+    });
 
-startGame();
+    this.restartButton.addEventListener("click", () => this.startGame());
+  }
 
-restarttButton.addEventListener("click", startGame);
-
-const socket = new WebSocket("ws://localhost:5501");
-socket.onopen = (event) => {
-  // console.log("client side event",event);
-  socket.send(
-    JSON.stringify({
-      type: "name",
-    })
-  );
-  receivePlayerInfoFromServer();
-};
-
-function sendPlayerInfoToServer({
-  type,
-  playerXMoves,
-  playerCircleMoves,
-  isCircleTurn,
-  isDraw,
-}) {
-  let sendObj = {};
-  if (type === "isPair") {
-    sendObj = {
-      type: "isPair",
+  setupSocketEvents() {
+    this.socket.onopen = (event) => {
+      console.log("Socket connected:", event);
+      this.socket.send(JSON.stringify({ type: "name" }));
+      this.receivePlayerInfoFromServer();
     };
   }
 
-  if (type === "move") {
-    sendObj = {
-      type: "move",
-      data: {
+  setupAISocket() {
+    this.aiSocket = new WebSocket(this.AI_SOCKET_URL);
+    this.aiSocket.onopen = (event) => {
+      console.log("Connected to AI server");
+    };
+
+    this.aiSocket.onmessage = (event) => {
+      const replyFromAIServer = JSON.parse(event.data);
+
+      if (replyFromAIServer.type === "aiMove") {
+        // Update board with AI's move
+        const aiMoveIndex = replyFromAIServer.move;
+        const cell = this.cellElements[aiMoveIndex];
+        console.log("heres AI MOVES", aiMoveIndex, cell);
+        this.handleClick(cell);
+
+        this.currentPlayer = this.PLAYERS.PLAYER_X;
+        // const currentClass = this.circleTurn ? this.CIRCLE_CLASS : this.X_CLASS;
+
+        // this.placeMark(cell, currentClass);
+
+        // if (this.checkWin(currentClass)) {
+        //   this.endGame(false);
+        // } else if (this.isDraw()) {
+        //   this.endGame(true);
+        // } else {
+        //   this.swapTurn();
+        //   this.updatePlayerTurn();
+        //   this.setBoardHoverClass();
+        //   if (this.aiMode && !this.circleTurn) {
+        //     const boardState = [...this.cellElements].map((cell) => {
+        //       if (cell.classList.contains(this.X_CLASS)) return "X";
+        //       if (cell.classList.contains(this.CIRCLE_CLASS)) return "O";
+        //       return null;
+        //     });
+
+        //     this.aiSocket.send(
+        //       JSON.stringify({
+        //         type: "playerMove",
+        //         board: boardState,
+        //       })
+        //     );
+        //   }
+        // }
+      }
+    };
+
+    this.aiSocket.onclose = () => {
+      console.log("Disconnected from AI server");
+    };
+
+    this.aiSocket.onerror = (error) => {
+      console.error("AI server error:", error);
+    };
+  }
+
+  sendPlayerInfoToServer({
+    type,
+    playerXMoves,
+    playerCircleMoves,
+    isCircleTurn,
+    isDraw,
+  }) {
+    if (this.aiMode) return;
+    const payload = { type, data: {} };
+    if (type === "isPair") payload.data = {};
+    if (type === "move") {
+      payload.data = {
         PLAYER_X: [...playerXMoves],
         PLAYER_O: [...playerCircleMoves],
-      },
-    };
-  }
-
-  if (type === "turn") {
-    sendObj = {
-      type: "turn",
-      data: { isCircleTurn },
-    };
-  }
-
-  if (type === "endGame") {
-    sendObj = {
-      type: "endGame",
-      data: { isDraw },
-    };
-  }
-  socket.send(JSON.stringify(sendObj));
-  receivePlayerInfoFromServer();
-}
-
-console.log("isPair", isPair);
-const receivePlayerInfoFromServer = () => {
-  socket.onmessage = (event) => {
-    const replyFromServer = JSON.parse(event.data);
-    console.log("reply from server", replyFromServer);
-    if (replyFromServer.type === "assignName") {
-      currentPlayer = replyFromServer.name;
-      assignPlayer();
-      updatePlayerTurn();
-      setBoardHoverClass();
-      checkPair();
+      };
     }
+    if (type === "turn") payload.data = { isCircleTurn };
+    if (type === "endGame") payload.data = { isDraw };
 
-    if (replyFromServer.type === "isPair") {
-      isPair = replyFromServer.data.isPair;
-      console.log("isPair in client", isPair);
-      updatePlayerTurn();
-    }
+    this.socket.send(JSON.stringify(payload));
+    this.receivePlayerInfoFromServer();
+  }
 
-    if (replyFromServer.type === "move") {
-      cellElements.forEach((cell, index) => {
-        const PLAYER_O_MOVES = replyFromServer.data.PLAYER_O;
-        const PLAYER_X_MOVES = replyFromServer.data.PLAYER_X;
-        if (PLAYER_O_MOVES.includes(index)) {
-          cell.classList.add(CIRCLE_CLASS);
-        }
-        if (PLAYER_X_MOVES.includes(index)) {
-          cell.classList.add(X_CLASS);
-        }
+  receivePlayerInfoFromServer() {
+    if (this.aiMode) return;
+    this.socket.onmessage = (event) => {
+      const replyFromServer = JSON.parse(event.data);
+      console.log("Reply from server:", replyFromServer);
+
+      switch (replyFromServer.type) {
+        case "assignName":
+          this.currentPlayer = replyFromServer.name;
+          this.assignPlayer();
+          this.updatePlayerTurn();
+          this.setBoardHoverClass();
+          this.checkPair();
+          break;
+
+        case "isPair":
+          this.isPair = replyFromServer.data.isPair;
+          this.updatePlayerTurn();
+          break;
+
+        case "move":
+          this.updateBoardFromServer(replyFromServer.data);
+          break;
+
+        case "turn":
+          this.circleTurn = replyFromServer.data.isCircleTurn;
+          this.receiverPlayer = replyFromServer.name;
+          this.updatePlayerTurn();
+          this.setBoardHoverClass();
+          break;
+
+        case "endGame":
+          this.endGame(replyFromServer.data.isDraw);
+          break;
+
+        case "disconnect":
+          this.startGame();
+          this.isPair = replyFromServer.data.isPair;
+          this.updatePlayerTurn();
+          break;
+      }
+    };
+  }
+
+  updateBoardFromServer(data) {
+    const { PLAYER_O, PLAYER_X } = data;
+    this.cellElements.forEach((cell, index) => {
+      if (PLAYER_O.includes(index)) cell.classList.add(this.CIRCLE_CLASS);
+      if (PLAYER_X.includes(index)) cell.classList.add(this.X_CLASS);
+    });
+  }
+
+  startGame() {
+    this.circleTurn = false;
+
+    this.cellElements.forEach((cell) => {
+      cell.classList.remove(this.X_CLASS, this.CIRCLE_CLASS);
+      cell.removeEventListener("click", this.handleClick);
+      cell.addEventListener("click", (e) => this.handleClick(e.target), {
+        once: true,
+      });
+    });
+
+    this.winningMessageTextElement.classList.remove("show");
+    this.playerModeOptions.classList.remove("show");
+
+    if (!this.aiMode && this.currentPlayer) {
+      this.sendPlayerInfoToServer({
+        type: "turn",
+        isCircleTurn: this.circleTurn,
       });
     }
 
-    if (replyFromServer.type === "turn") {
-      circleTurn = replyFromServer.data.isCircleTurn;
-      receiverPlayer = replyFromServer.name;
-      updatePlayerTurn();
-      setBoardHoverClass();
+    if (this.aiMode) {
+      this.currentPlayer = this.PLAYERS.PLAYER_X;
+      this.assignPlayer();
+      this.updatePlayerTurn();
+      this.setBoardHoverClass();
     }
-
-    if (replyFromServer.type === "endGame") {
-      endGame(replyFromServer.data.isDraw);
-    }
-
-    if (replyFromServer.type === "disconnect") {
-      startGame();
-      isPair = replyFromServer.data.isPair;
-      updatePlayerTurn();
-    }
-  };
-};
-
-function startGame() {
-  circleTurn = false;
-  if (currentPlayer) {
-    sendPlayerInfoToServer({ type: "turn", isCircleTurn: circleTurn });
+    // if (this.aiMode) {
+    //   this.currentPlayer = this.PLAYERS.PLAYER_X;
+    // }
   }
-  //if it is already set to true then dont change to false
-  if (!isPair) isPair = false;
 
-  cellElements.forEach((cell) => {
-    cell.classList.remove(X_CLASS);
-    cell.classList.remove(CIRCLE_CLASS);
-
-    cell.removeEventListener("click", handleClick);
-    cell.addEventListener("click", handleClick, { once: true });
-  });
-  winningMessageTextElement.classList.remove("show");
-}
-
-function handleClick(e) {
-  //place mark
-  //switch turn
-  //check for win
-  //check for draw
-  const cell = e.target;
-  const currentClass = circleTurn ? CIRCLE_CLASS : X_CLASS;
-  //Only pair can play tic tac toe;
-  if (!isPair) return;
-  //In circle Turn PLAYER_O can only click and vice versa
-  if (circleTurn && currentPlayer === PLAYERS.PLAYER_X) return;
-  if (!circleTurn && currentPlayer === PLAYERS.PLAYER_O) return;
-
-  placeMark(cell, currentClass);
-  if (checkWin(currentClass)) {
-    endGame(false);
-    sendPlayerInfoToServer({ type: "endGame", isDraw: false });
-    updatePlayerTurn();
-  } else if (isDraw()) {
-    endGame(true);
-    sendPlayerInfoToServer({ type: "endGame", isDraw: true }); //
-    updatePlayerTurn();
-  } else {
-    swapTurn();
-    playerTurn.innerHTML = "";
-    sendPlayerInfoToServer({ type: "turn", isCircleTurn: circleTurn });
-  }
-}
-
-function endGame(draw) {
-  if (draw) {
-    winningMessageText.innerText = "Draw";
-  } else {
-    winningMessageText.innerText = `${circleTurn ? "O" : "X"} Wins!`;
-  }
-  winningMessageTextElement.classList.add("show");
-}
-
-function isDraw() {
-  return [...cellElements].every((cell) => {
-    return (
-      cell.classList.contains(X_CLASS) || cell.classList.contains(CIRCLE_CLASS)
+  handleClick(clickedCell) {
+    const cell = clickedCell;
+    const currentClass = this.circleTurn ? this.CIRCLE_CLASS : this.X_CLASS;
+    console.log(
+      "hereeeee circle turn,currentPlayer",
+      this.circleTurn,
+      this.currentPlayer
     );
-  });
-}
+    if (!this.isPair && !this.aiMode) return;
 
-function placeMark(cell, currentClass) {
-  if (currentClass === X_CLASS && currentPlayer === PLAYERS.PLAYER_X) {
+    // //handle ai case if ai lags and player move too fast
+    // if (
+    //   this.aiMode &&
+    //   this.currentPlayer === this.PLAYERS.PLAYER_X &&
+    //   this.circleTurn === true
+    // )
+    //   return;
+
+    if (this.circleTurn && this.currentPlayer === this.PLAYERS.PLAYER_X) return;
+    if (!this.circleTurn && this.currentPlayer === this.PLAYERS.PLAYER_O)
+      return;
+
+    this.placeMark(cell, currentClass);
+    if (!this.aiMode) {
+      this.playMultiPlayer(currentClass);
+      return;
+    }
+
+    setTimeout(() => {
+      this.playWithAI(currentClass);
+    }, 500);
+  }
+
+  placeMark(cell, currentClass) {
     cell.classList.add(currentClass);
   }
 
-  if (currentClass === CIRCLE_CLASS && currentPlayer === PLAYERS.PLAYER_O) {
-    cell.classList.add(currentClass);
+  swapTurn() {
+    this.circleTurn = !this.circleTurn;
   }
 
-  const playerXMoves = [];
-  const playerCircleMoves = [];
-
-  cellElements.forEach((cell, index) => {
-    if (cell.classList.contains("x")) {
-      playerXMoves.push(index);
-    }
-
-    if (cell.classList.contains("circle")) {
-      playerCircleMoves.push(index);
-    }
-  });
-
-  sendPlayerInfoToServer({ type: "move", playerXMoves, playerCircleMoves });
-}
-
-function swapTurn() {
-  circleTurn = !circleTurn;
-}
-
-function setBoardHoverClass() {
-  board.classList.remove(X_CLASS);
-  board.classList.remove(CIRCLE_CLASS);
-  if (currentPlayer === PLAYERS.PLAYER_O) {
-    board.classList.add(CIRCLE_CLASS);
-  } else if (currentPlayer === PLAYERS.PLAYER_X) {
-    board.classList.add(X_CLASS);
-  }
-}
-
-function checkWin(currentClass) {
-  return WINNING_COMBINATIONS.some((combination) => {
-    return combination.every((index) => {
-      return cellElements[index].classList.contains(currentClass);
+  checkWin(currentClass) {
+    return this.WINNING_COMBINATIONS.some((combination) => {
+      return combination.every((index) => {
+        return this.cellElements[index].classList.contains(currentClass);
+      });
     });
-  });
-}
+  }
 
-function assignPlayer() {
-  console.log(currentPlayer);
-  if (currentPlayer) {
+  isDraw() {
+    return [...this.cellElements].every((cell) => {
+      return (
+        cell.classList.contains(this.X_CLASS) ||
+        cell.classList.contains(this.CIRCLE_CLASS)
+      );
+    });
+  }
+
+  endGame(draw) {
+    this.winningMessageText.innerText = draw
+      ? "Draw"
+      : `${this.circleTurn ? "O" : "X"} Wins!`;
+    this.winningMessageTextElement.classList.add("show");
+  }
+
+  setBoardHoverClass() {
+    this.board.classList.remove(this.X_CLASS, this.CIRCLE_CLASS);
+    if (this.currentPlayer === this.PLAYERS.PLAYER_O) {
+      this.board.classList.add(this.CIRCLE_CLASS);
+    } else if (this.currentPlayer === this.PLAYERS.PLAYER_X) {
+      this.board.classList.add(this.X_CLASS);
+    }
+  }
+
+  assignPlayer() {
     const playerNameElement = document.getElementById("player-name");
-    playerNameElement.innerHTML = currentPlayer;
+    playerNameElement.innerHTML = this.currentPlayer || "";
+  }
+
+  updatePlayerTurn() {
+    if (this.aiMode) {
+      this.playerTurn.innerHTML = this.circleTurn ? "AI's Turn" : "Your Turn";
+      return;
+    }
+    if (!this.isPair) {
+      this.playerTurn.innerHTML = "Waiting for another player to join...";
+      return;
+    }
+    this.playerTurn.innerHTML =
+      this.circleTurn && this.currentPlayer === this.PLAYERS.PLAYER_O
+        ? "Your Turn"
+        : !this.circleTurn && this.currentPlayer === this.PLAYERS.PLAYER_X
+        ? "Your Turn"
+        : "Opponent's Turn";
+  }
+
+  checkPair() {
+    this.sendPlayerInfoToServer({ type: "isPair" });
+  }
+
+  playMultiPlayer(currentClass) {
+    const playerXMoves = [];
+    const playerCircleMoves = [];
+
+    this.cellElements.forEach((cell, index) => {
+      if (cell.classList.contains(this.X_CLASS)) playerXMoves.push(index);
+      if (cell.classList.contains(this.CIRCLE_CLASS))
+        playerCircleMoves.push(index);
+    });
+
+    this.sendPlayerInfoToServer({
+      type: "move",
+      playerXMoves,
+      playerCircleMoves,
+    });
+
+    if (this.checkWin(currentClass)) {
+      this.endGame(false);
+      this.sendPlayerInfoToServer({ type: "endGame", isDraw: false });
+    } else if (this.isDraw()) {
+      this.endGame(true);
+      this.sendPlayerInfoToServer({ type: "endGame", isDraw: true });
+    } else {
+      this.swapTurn();
+      this.updatePlayerTurn();
+      this.sendPlayerInfoToServer({
+        type: "turn",
+        isCircleTurn: this.circleTurn,
+      });
+    }
+  }
+
+  playWithAI(currentClass) {
+    if (this.checkWin(currentClass)) {
+      this.endGame(false);
+    } else if (this.isDraw()) {
+      this.endGame(true);
+    } else {
+      this.swapTurn();
+      this.updatePlayerTurn();
+      this.setBoardHoverClass();
+
+      if (this.aiMode && this.circleTurn) {
+        // in board for neural net PLAYER_X=1,PLAYER_O(ai) = -1
+        // board blank = 0
+        this.currentPlayer = this.PLAYERS.PLAYER_O;
+        const boardState = [...this.cellElements].map((cell) => {
+          if (cell.classList.contains(this.X_CLASS)) return 1;
+          if (cell.classList.contains(this.CIRCLE_CLASS)) return -1;
+          return 0;
+        });
+        this.aiSocket.send(
+          JSON.stringify({
+            type: "playerMove",
+            board: boardState,
+          })
+        );
+      }
+    }
+  }
+
+  getRandomDelay(max, min) {
+    return Math.random() * (max - min) + min;
   }
 }
 
-function updatePlayerTurn() {
-  if (circleTurn && currentPlayer === PLAYERS.PLAYER_O && isPair) {
-    playerTurn.innerHTML = `Your Turn`;
-  } else if (!circleTurn && currentPlayer === PLAYERS.PLAYER_X && isPair) {
-    playerTurn.innerHTML = `Your Turn`;
-  } else if (!isPair) {
-    playerTurn.innerHTML = "Please wait for the other player to join!";
-  } else {
-    playerTurn.innerHTML = "";
-  }
-}
-
-function checkPair() {
-  console.log("RUNNING CHECK PAIR");
-  sendPlayerInfoToServer({ type: "isPair" });
-}
+const game = new TicTacToe();

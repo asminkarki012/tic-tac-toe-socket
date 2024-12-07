@@ -193,3 +193,9 @@ body {
 .winning-message.show {
   display: flex;
 }
+
+#playmode-options {
+  gap: 10px; /* Add simple spacing between buttons */
+}
+
+
