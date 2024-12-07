@@ -18,14 +18,14 @@ App I made for [The Odin Project](https://www.theodinproject.com/lessons/node-pa
 - Neuralnet is integrated with websocket on python
 - User can play with neuralnet and they can also optimize its performance by fine tuning the hyperparameter
 
-## Running for multiple player
+## Running for multiplayer websocket
 ```
 npm i 
 ```
 ```
 npm run dev 
 ```  
-## Running neural net
+## Running neuralnet websocket server
 ```
 pip install -r requirements.txt
 ```
@@ -34,10 +34,12 @@ python3 neuralnet_server/server.py
 ```
 ## Training of neuralnet
 Took the code reference for neuralnet from [here](https://github.com/12yuens2/neural-net-tic-tac-toe)
+
 To train the neuralnet
 ```
 python3 -m neuralnet_server/model/train.py
 ```
+
 To pretrain the neuralnet and generate training dataset(need to uncomment few things you can check on docs)
 ```
 python3 -m neuranet_server/model/play_train.py
