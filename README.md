@@ -28,6 +28,9 @@ npm run dev
 ```  
 ## Running neuralnet websocket server
 ```
+cd neuralnet_server
+```
+```
 pip install -r requirements.txt
 ```
 ```
@@ -38,10 +41,10 @@ Took the code reference for neuralnet from [here](https://github.com/12yuens2/ne
 
 To train the neuralnet
 ```
-python3 -m neuralnet_server/model/train.py
+python3 -m neuralnet_server.model.train.py
 ```
 
 To pretrain the neuralnet and generate training dataset(need to uncomment few things you can check on docs)
 ```
-python3 -m neuranet_server/model/play_train.py
+python3 -m neuranet_server.model.play_train.py
 ```
