@@ -6,6 +6,7 @@ App I made for [The Odin Project](https://www.theodinproject.com/lessons/node-pa
 - basic working of websocket
 - implementing neuralnet from scratch
 - gradient descent algorithm for neuralnet
+- sigmoid function
 - forward and backward propagation of neuralnet
 
 
@@ -18,7 +19,7 @@ App I made for [The Odin Project](https://www.theodinproject.com/lessons/node-pa
 - Neuralnet is integrated with websocket on python
 - User can play with neuralnet and they can also optimize its performance by fine tuning the hyperparameter
 
-## Running for multiplayer websocket
+## Running multiplayer websocket server
 ```
 npm i 
 ```
