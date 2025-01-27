@@ -1,33 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <link rel="stylesheet" href="style.css">
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tic-Tac-Toe</title>
+  </head>
+  <body>
+    <h1 id="player-name"></h1>
+    <h2 id="player-turn" class="flex-center"></h2>
+    <!-- <p id="player-status" class="flex-center">TEST</p> -->
+    <div class="board" id="board">
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+      <div class="cell" data-cell></div>
+    </div>
+    <div class="winning-message" id="winning-message">
+      <div data-winning-message-text></div>
+      <button id="restartButton">Restart</button>
+    </div>
 
-</head>
-<body>
-<div class="board"  id="board">
-<div class="cell" data-cell></div>
-<div class="cell" data-cell></div>
-<div class="cell" data-cell></div>
-<div class="cell" data-cell></div>
-<div class="cell" data-cell></div>
-<div class="cell" data-cell></div>
-<div class="cell" data-cell></div>
-<div class="cell" data-cell></div>
-<div class="cell" data-cell></div>
-</div>
-<div class="winning-message" id="winning-message">
-    <div data-winning-message-text></div>
-    <button id="restartButton">Restart</button>
-    
-</div>
+    <div id="playmode-options" class="winning-message">
+      <div data-winning-message-text>Tic Tac Toe</div>
+      <button id="multiplayer-button">Multiplayer</button>
+      <button id="ai-mode-button">Singleplayer</button>
+    </div>
 
- 
+    <script src="script.js"></script>
+    <!-- <script>
+      //   const socket = new WebSocket("ws://echo.websocket.org/");
+      const socket = new WebSocket("ws://localhost:5501");
+      socket.onopen = (event) => {
+        // alert("Socket Connection established");
+        console.log("socket connection established");
+        // setTimeout(() => {
+        //   socket.send("hello there From Client");
+        // }, 1000);
+      };
 
-<script src="script.js"> </script>
-</body>
+      socket.onmessage = (event) => {
+        console.log("message form server " + event.data);
+      };
+    </script> -->
+  </body>
 </html>
