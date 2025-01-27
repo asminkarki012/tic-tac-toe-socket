@@ -45,8 +45,8 @@ python3 -m neuralnet_server.model.train.py
 ```
 
 To pretrain the neuralnet and generate training dataset(need to uncomment few things you can check on [code](https://github.com/12yuens2/neural-net-tic-tac-toe))
-## License
-MIT
-
+```python
 python3 -m neuranet_server.model.play_train.py
 ```
+## License
+MIT
